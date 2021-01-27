@@ -75,13 +75,16 @@ class SolrKevalsDB():
         if len(batch) > 0:
             self._send_batch(batch)
 
+    def default_query(self):
+        return '*:*'
+
     def list(self, field_value=None, sort='timestamp_dt desc', limit=100):
         # set solr search terms
         solr_query_url = self.kevalsdb_url + '/query'
         query_string = {
-            'q':'*:*',
-            'rows':limit,
-            'sort':sort
+            'q': self.default_query(),
+            'rows': limit,
+            'sort': sort
         }
         # Add optional fields:
         if field_value:
