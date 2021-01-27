@@ -9,12 +9,16 @@ See https://lucene.apache.org/solr/guide/7_3/updating-parts-of-documents.html
 import requests
 import logging
 import json
+import os
 
 logger = logging.getLogger(__name__)
 
 class SolrKevalsDB():
 
-    def __init__(self, kevalsdb_url, update_batch_size=1000):
+    def __init__(self, kevalsdb_url=os.environ.get('KEVALS_SOLR_URL', None), update_batch_size=1000):
+        if not kevalsdb_url:
+            raise Exception("You must supply a KEVALS_SOLR_URL!")
+        # Record settings:
         self.kevalsdb_url = kevalsdb_url
         self.batch_size = update_batch_size
         # Set up the update configuration:
@@ -23,9 +27,6 @@ class SolrKevalsDB():
     def _jsonl_doc_generator(self, input_reader):
         for line in input_reader:
             item = json.loads(line)
-            # There must be an ID, so complain if there isn't.
-            if not 'id' in item:
-                raise Exception("You should supply an id for each update! This update has no ID: %s" % item )
             # And return
             yield item
 
@@ -33,6 +34,10 @@ class SolrKevalsDB():
         # Convert the plain dicts into Solr update documents:
         updates = []
         for item in batch:
+            # There must be an ID, so complain if there isn't.
+            if not 'id' in item:
+                raise Exception("You should supply an id for each update! This update has no ID: %s" % item )
+            # Turn into an update:
             update_item = {}
             for key in item:
                 if key == 'id':
@@ -54,12 +59,12 @@ class SolrKevalsDB():
         self._send_update(updates)
 
     def import_jsonl_reader(self, input_reader):
-        self.import_jsonl(self._jsonl_doc_generator(input_reader))
+        self.import_items_from(self._jsonl_doc_generator(input_reader))
 
     def import_items(self, items):
         self._send_batch(items)
 
-    def import_jsonl(self, item_generator):
+    def import_items_from(self, item_generator):
         batch = []
         for item in item_generator:
             batch.append(item)
@@ -80,7 +85,7 @@ class SolrKevalsDB():
         }
         # Add optional fields:
         if field_value:
-            if field_value[1] == '_NONE_':
+            if field_value[1] == '_NONE_' or field_value[1] == '':
                 query_string['q'] += ' AND -{}:[* TO *]'.format(field_value[0])
             else:
                 query_string['q'] += ' AND {}:{}'.format(field_value[0], field_value[1])
@@ -136,5 +141,5 @@ class SolrKevalsDB():
             yield { 'id': id, field: { action: value } } 
         
     def update(self, ids, field, value, action='add-distinct'):
-        self.import_jsonl(self._update_generator(ids, field, value, action))
+        self.import_items_from(self._update_generator(ids, field, value, action))
 
