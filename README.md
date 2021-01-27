@@ -20,4 +20,8 @@ The aggregation pattern means we can gather this data even if some transient err
 
 ## Usage
 
+First, set up a SolrCloud collection. It is recommended that each kind of item is given a different collection, and that an explicit schema is defined for each field for each type.
+
+For development, the supplied scripts can do this, like so:
+ 
 ...
